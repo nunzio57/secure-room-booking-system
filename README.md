@@ -6,7 +6,7 @@
 ![IAM](https://img.shields.io/badge/IAM-Keycloak%20%7C%20OIDC-orange)
 ![Vault](https://img.shields.io/badge/Secrets-HashiCorp%20Vault-grey)
 
-## 📋 Project Overview
+## Project Overview
 
 This project is a **Security-First Proof of Concept (PoC)** demonstrating a robust, compliant, and hardened web architecture. While the functional scope is a Room Booking Application, the primary engineering focus was implementing a defense-in-depth strategy compliant with **NIST SP 800-53 Rev. 5** and **CIS Benchmarks**.
 
@@ -18,8 +18,7 @@ The system moves beyond standard development practices by implementing **Secretl
 
 The architecture follows a strict "Zero Trust" network model with a single point of entry.
 
-![Architecture Diagram](docs/images/architecture_diagram.png)
-*(Note: Please refer to `/docs` for high-resolution diagrams and threat models)*
+![Architecture Diagram](docs/architecture.png)
 
 ### Network Flow & Segmentation
 1.  **Perimeter (Public):** The only exposed service is the **Apache Web Server** (Reverse Proxy) listening on port 443 (HTTPS).
