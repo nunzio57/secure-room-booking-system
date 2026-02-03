@@ -1,0 +1,24 @@
+# Java & Spring Boot
+target/
+*.class
+.mvn/
+mvnw
+mvnw.cmd
+.idea/
+*.iml
+
+# Log files
+*.log
+logs/
+
+# Security & Secrets *.jks
+*.p12
+*.key
+*.pem
+*.crt
+secret.properties
+.env
+
+# OS Files
+.DS_Store
+Thumbs.db

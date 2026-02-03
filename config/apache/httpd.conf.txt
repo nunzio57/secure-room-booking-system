@@ -1,0 +1,233 @@
+# ====================================================================
+# MAIN APACHE CONFIGURATION FILE
+# ====================================================================
+
+Define SRVROOT "c:/Apache24"
+ServerRoot "${SRVROOT}"
+
+# --- MODULI FONDAMENTALI ---
+LoadModule actions_module modules/mod_actions.so
+LoadModule alias_module modules/mod_alias.so
+LoadModule allowmethods_module modules/mod_allowmethods.so
+LoadModule asis_module modules/mod_asis.so
+LoadModule authn_core_module modules/mod_authn_core.so
+LoadModule authn_file_module modules/mod_authn_file.so
+LoadModule authz_core_module modules/mod_authz_core.so
+LoadModule authz_groupfile_module modules/mod_authz_groupfile.so
+LoadModule authz_host_module modules/mod_authz_host.so
+LoadModule authz_user_module modules/mod_authz_user.so
+LoadModule cgi_module modules/mod_cgi.so
+LoadModule dir_module modules/mod_dir.so
+LoadModule env_module modules/mod_env.so
+LoadModule headers_module modules/mod_headers.so
+LoadModule heartmonitor_module modules/mod_heartmonitor.so
+LoadModule include_module modules/mod_include.so
+LoadModule isapi_module modules/mod_isapi.so
+LoadModule lbmethod_byrequests_module modules/mod_lbmethod_byrequests.so
+LoadModule log_config_module modules/mod_log_config.so
+LoadModule mime_module modules/mod_mime.so
+LoadModule negotiation_module modules/mod_negotiation.so
+LoadModule proxy_module modules/mod_proxy.so
+LoadModule proxy_ajp_module modules/mod_proxy_ajp.so
+LoadModule proxy_http_module modules/mod_proxy_http.so
+LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so
+LoadModule reqtimeout_module modules/mod_reqtimeout.so
+LoadModule rewrite_module modules/mod_rewrite.so
+LoadModule setenvif_module modules/mod_setenvif.so
+LoadModule slotmem_shm_module modules/mod_slotmem_shm.so
+LoadModule socache_shmcb_module modules/mod_socache_shmcb.so
+LoadModule ssl_module modules/mod_ssl.so
+LoadModule watchdog_module modules/mod_watchdog.so
+
+# --- CONFIGURAZIONE UTENTE/GRUPPO (Windows usa daemon di default) ---
+<IfModule unixd_module>
+User daemon
+Group daemon
+</IfModule>
+
+# --- SERVER ADMIN & NOME GLOBALE ---
+ServerAdmin admin@example.com
+ServerName localhost:80
+
+# --- PERFORMANCE & TIMEOUT ---
+Timeout 10
+KeepAlive On
+MaxKeepAliveRequests 100
+KeepAliveTimeout 15
+
+# --- PORTE DI ASCOLTO ---
+Listen 80
+Listen 443
+
+# --- SICUREZZA GLOBALE FILE SYSTEM ---
+<Directory />
+    AllowOverride none
+    Require all denied
+    Options None
+</Directory>
+
+DocumentRoot "${SRVROOT}/htdocs"
+<Directory "${SRVROOT}/htdocs">
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+
+# --- BLOCCO FILE SPECIALI (.ht*, .git, ecc) ---
+<Files ".ht*">
+    Require all denied
+</Files>
+<FilesMatch "^\.ht">
+    Require all denied
+</FilesMatch>
+<LocationMatch "/(\.git|\.svn)/">
+    Require all denied
+</LocationMatch>
+<FilesMatch "\.(bak|old|inc|config)$">
+    Require all denied
+</FilesMatch>
+
+# --- LOGGING ---
+ErrorLog "logs/error.log"
+LogLevel warn
+
+<IfModule log_config_module>
+    LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+    LogFormat "%h %l %u %t \"%r\" %>s %b" common
+    CustomLog "logs/access.log" combined
+</IfModule>
+
+# --- MIME TYPES ---
+<IfModule mime_module>
+    TypesConfig conf/mime.types
+    AddType application/x-compress .Z
+    AddType application/x-gzip .gz .tgz
+</IfModule>
+
+# --- HEADER SICUREZZA GLOBALI ---
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+
+# --- MODULI EXTRA ---
+# (Disabilitiamo SSL default per gestirlo nei VirtualHost)
+# Include conf/extra/httpd-ssl.conf
+<IfModule ssl_module>
+    SSLRandomSeed startup builtin
+    SSLRandomSeed connect builtin
+</IfModule>
+
+# ========================================================
+# 1. REINDIRIZZAMENTO HTTP -> HTTPS (Globale)
+# ========================================================
+<VirtualHost *:80>
+    ServerName localhost
+    RewriteEngine On
+    RewriteRule ^/(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+</VirtualHost>
+
+# ========================================================
+# 2. VIRTUAL HOST: LOCALHOST (Proxy verso porta 8081)
+# (Utile se hai Vault UI o altro servizio su 8081)
+# ========================================================
+<VirtualHost *:443>
+    ServerName localhost
+    
+    SSLEngine on
+    SSLCertificateFile      "C:/Apache24/conf/ssl/server.crt"
+    SSLCertificateKeyFile   "C:/Apache24/conf/ssl/server.key"
+
+    SSLProtocol TLSv1.2 TLSv1.3
+    SSLCipherSuite ECDHE:!aNULL:!MD5:!3DES:!DES:!RC4
+    SSLHonorCipherOrder on
+
+    ErrorLog  "logs/ssl_proxy_error.log"
+    CustomLog "logs/ssl_proxy_access.log" combined
+
+    ProxyRequests Off
+    ProxyPreserveHost On
+
+    <Proxy *>
+        Require all granted
+    </Proxy>
+    
+    ProxyPass / http://localhost:8081/
+    ProxyPassReverse / http://localhost:8081/
+</VirtualHost>
+
+# ========================================================
+# 3. VIRTUAL HOST: PRENOTAZIONI AULE (Spring Boot 8082)
+# Risponde a: https://prenotazioni.local
+# ========================================================
+<VirtualHost *:443>
+    ServerName prenotazioni.local
+    
+    SSLEngine on
+    # Usa i certificati generati per prenotazioni.local
+    SSLCertificateFile      "C:/Apache24/conf/ssl/prenotazioni.crt"
+    SSLCertificateKeyFile   "C:/Apache24/conf/ssl/prenotazioni.key"
+
+    SSLProtocol TLSv1.2 TLSv1.3
+    SSLCipherSuite ECDHE:!aNULL:!MD5:!3DES:!DES:!RC4
+    SSLHonorCipherOrder on
+
+    ErrorLog  "logs/prenotazioni_error.log"
+    CustomLog "logs/prenotazioni_access.log" combined
+
+    ProxyRequests Off
+    ProxyPreserveHost On
+
+    <Proxy *>
+        Require all granted
+    </Proxy>
+
+    # Header fondamentali per far capire a Spring che siamo in HTTPS
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Port "443"
+
+    # Inoltra tutto il traffico a Spring Boot (Porta 8082)
+    ProxyPass / http://localhost:8082/
+    ProxyPassReverse / http://localhost:8082/
+    
+    Header always set X-Frame-Options "SAMEORIGIN"
+</VirtualHost>
+
+# ========================================================
+# 4. VIRTUAL HOST: KEYCLOAK (Porta 8083)
+# Risponde a: https://auth.prenotazioni-dev.com
+# (Modificato per Google OAuth compatibility)
+# ========================================================
+<VirtualHost *:443>
+    ServerName auth.prenotazioni-dev.com
+    
+    SSLEngine on
+    # Usa i certificati generati per il nuovo dominio .com
+    SSLCertificateFile      "C:/Apache24/conf/ssl/auth.prenotazioni-dev.com.crt"
+    SSLCertificateKeyFile   "C:/Apache24/conf/ssl/auth.prenotazioni-dev.com.key"
+
+    SSLProtocol TLSv1.2 TLSv1.3
+    SSLCipherSuite ECDHE:!aNULL:!MD5:!3DES:!DES:!RC4
+    SSLHonorCipherOrder on
+
+    ProxyRequests Off
+    ProxyPreserveHost On
+
+    # Header fondamentali per Keycloak dietro HTTPS
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Port "443"
+    RequestHeader set X-Forwarded-For %{REMOTE_ADDR}s
+
+    <Proxy *>
+        Require all granted
+    </Proxy>
+
+    # Content Security Policy aggiornata per accettare il nuovo dominio
+    Header always set Content-Security-Policy "default-src 'self' https://auth.prenotazioni-dev.com; script-src 'self' 'unsafe-inline' https://auth.prenotazioni-dev.com; style-src 'self' 'unsafe-inline' https://auth.prenotazioni-dev.com; img-src 'self' data:;"
+    
+    Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains"
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Punta alla porta 8083 (Keycloak su Docker)
+    ProxyPass / http://localhost:8083/
+    ProxyPassReverse / http://localhost:8083/
+</VirtualHost>

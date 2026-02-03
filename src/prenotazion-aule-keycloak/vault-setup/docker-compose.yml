@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  vault:
+    image: hashicorp/vault:latest
+    container_name: vault-server
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_ADDR: 'http://0.0.0.0:8200'
+      VAULT_API_ADDR: 'http://0.0.0.0:8200'
+      # Qui definiamo la configurazione JSON senza problemi di virgolette
+      VAULT_LOCAL_CONFIG: '{"backend": {"file": {"path": "/vault/file"}}, "listener": {"tcp": {"address": "0.0.0.0:8200", "tls_disable": 1}}, "default_lease_ttl": "168h", "max_lease_ttl": "720h", "ui": true, "disable_mlock": true}'
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - vault-persistence:/vault/file
+    command: server
+
+volumes:
+  vault-persistence:
